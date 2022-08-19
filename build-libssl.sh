@@ -28,7 +28,8 @@ set -u
 DEFAULTVERSION="1.1.1q"
 
 # Default (=full) set of targets to build
-DEFAULTTARGETS="ios-sim-cross-x86_64 ios-sim-cross-arm64 ios-cross-arm64 mac-catalyst-x86_64 mac-catalyst-arm64 tvos-sim-cross-x86_64 tvos-sim-cross-arm64 tvos-cross-arm64 watchos-sim-cross-x86_64 watchos-sim-cross-arm64 watchos-cross-armv7k watchos-cross-arm64_32"
+# DEFAULTTARGETS="ios-sim-cross-x86_64 ios-sim-cross-arm64 ios-cross-arm64 mac-catalyst-x86_64 mac-catalyst-arm64 tvos-sim-cross-x86_64 tvos-sim-cross-arm64 tvos-cross-arm64 watchos-sim-cross-x86_64 watchos-sim-cross-arm64 watchos-cross-armv7k watchos-cross-arm64_32"
+DEFAULTTARGETS="ios-sim-cross-x86_64 ios-cross-arm64"
 
 # Excluded targets:
 #   ios-sim-cross-i386  Legacy
@@ -222,6 +223,7 @@ TARGETS=""
 TVOS_SDKVERSION=""
 VERSION=""
 WATCHOS_SDKVERSION=""
+REPOROOT=$(pwd)
 
 # Process command line arguments
 for i in "$@"
@@ -282,6 +284,11 @@ case $i in
     ;;
   --version=*)
     VERSION="${i#*=}"
+    shift
+    ;;
+  --reporoot=*)
+    REPOROOT="${i#*=}"
+    mkdir -p "${REPOROOT}"
     shift
     ;;
   *)
@@ -362,7 +369,7 @@ fi
 SCRIPTDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 
 # Write files relative to current location and validate directory
-CURRENTPATH=$(pwd)
+CURRENTPATH=$REPOROOT
 case "${CURRENTPATH}" in
   *\ * )
     echo "Your path contains whitespaces, which is not supported by 'make install'."
@@ -494,67 +501,84 @@ LIBCRYPTO_CATALYST=()
 source "${SCRIPTDIR}/scripts/build-loop-targets.sh"
 
 # Build iOS/Simulator library if selected for build
-if [ ${#LIBSSL_IOS[@]} -gt 0 ]; then
+# if [ ${#LIBSSL_IOS[@]} -gt 0 ]; then
+#   echo "Build library for iOS..."
+#   lipo -create ${LIBSSL_IOS[@]} -output "${CURRENTPATH}/lib/libssl-iOS.a"
+#   lipo -create ${LIBCRYPTO_IOS[@]} -output "${CURRENTPATH}/lib/libcrypto-iOS.a"
+#   echo "\n=====>iOS SSL and Crypto lib files:"
+#   echo "${CURRENTPATH}/lib/libssl-iOS.a"
+#   echo "${CURRENTPATH}/lib/libcrypto-iOS.a"
+# fi
+# if [ ${#LIBSSL_IOSSIM[@]} -gt 0 ]; then
+#   echo "Build library for iOS Simulator..."
+#   lipo -create ${LIBSSL_IOSSIM[@]} -output "${CURRENTPATH}/lib/libssl-iOS-Sim.a"
+#   lipo -create ${LIBCRYPTO_IOSSIM[@]} -output "${CURRENTPATH}/lib/libcrypto-iOS-Sim.a"
+#   echo "\n=====>iOS Simulator SSL and Crypto lib files:"
+#   echo "${CURRENTPATH}/lib/libssl-iOS-Sim.a"
+#   echo "${CURRENTPATH}/lib/libcrypto-iOS-Sim.a"
+# fi
+
+# 合并模拟和真机架构
+if [[ ${#LIBSSL_IOS[@]} -gt 0 &&  ${#LIBSSL_IOSSIM[@]} -gt 0 ]]; then
   echo "Build library for iOS..."
-  lipo -create ${LIBSSL_IOS[@]} -output "${CURRENTPATH}/lib/libssl-iOS.a"
-  lipo -create ${LIBCRYPTO_IOS[@]} -output "${CURRENTPATH}/lib/libcrypto-iOS.a"
+  mkdir -p "${CURRENTPATH}/lib/ios"
+  lipo -create ${LIBSSL_IOS[@]} ${LIBSSL_IOSSIM[@]} -output "${CURRENTPATH}/lib/ios/libssl.a"
+  lipo -create ${LIBCRYPTO_IOS[@]} ${LIBCRYPTO_IOSSIM[@]} -output "${CURRENTPATH}/lib/ios/libcrypto.a"
   echo "\n=====>iOS SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-iOS.a"
-  echo "${CURRENTPATH}/lib/libcrypto-iOS.a"
+  echo "${CURRENTPATH}/lib/ios/libssl.a"
+  echo "${CURRENTPATH}/lib/ios/libcrypto.a"
 fi
-if [ ${#LIBSSL_IOSSIM[@]} -gt 0 ]; then
-  echo "Build library for iOS Simulator..."
-  lipo -create ${LIBSSL_IOSSIM[@]} -output "${CURRENTPATH}/lib/libssl-iOS-Sim.a"
-  lipo -create ${LIBCRYPTO_IOSSIM[@]} -output "${CURRENTPATH}/lib/libcrypto-iOS-Sim.a"
-  echo "\n=====>iOS Simulator SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-iOS-Sim.a"
-  echo "${CURRENTPATH}/lib/libcrypto-iOS-Sim.a"
-fi
+
 
 # Build tvOS/Simulator library if selected for build
 if [ ${#LIBSSL_TVOS[@]} -gt 0 ]; then
   echo "Build library for tvOS..."
-  lipo -create ${LIBSSL_TVOS[@]} -output "${CURRENTPATH}/lib/libssl-tvOS.a"
-  lipo -create ${LIBCRYPTO_TVOS[@]} -output "${CURRENTPATH}/lib/libcrypto-tvOS.a"
+  mkdir -p "${CURRENTPATH}/lib/tvOS"
+  lipo -create ${LIBSSL_TVOS[@]} -output "${CURRENTPATH}/lib/tvOS/libssl-tvOS.a"
+  lipo -create ${LIBCRYPTO_TVOS[@]} -output "${CURRENTPATH}/lib/tvOS/libcrypto-tvOS.a"
   echo "\n=====>tvOS SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-tvOS.a"
-  echo "${CURRENTPATH}/lib/libcrypto-tvOS.a"
+  echo "${CURRENTPATH}/lib/tvOS/libssl-tvOS.a"
+  echo "${CURRENTPATH}/lib/tvOS/libcrypto-tvOS.a"
 fi
 if [ ${#LIBSSL_TVOSSIM[@]} -gt 0 ]; then
   echo "Build library for tvOS..."
-  lipo -create ${LIBSSL_TVOSSIM[@]} -output "${CURRENTPATH}/lib/libssl-tvOS-Sim.a"
-  lipo -create ${LIBCRYPTO_TVOSSIM[@]} -output "${CURRENTPATH}/lib/libcrypto-tvOS-Sim.a"
+  mkdir -p "${CURRENTPATH}/lib/tvOS"
+  lipo -create ${LIBSSL_TVOSSIM[@]} -output "${CURRENTPATH}/lib/tvOS/libssl-tvOS-Sim.a"
+  lipo -create ${LIBCRYPTO_TVOSSIM[@]} -output "${CURRENTPATH}/lib/tvOS/libcrypto-tvOS-Sim.a"
   echo "\n=====>tvOS Simulator SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-tvOS-Sim.a"
-  echo "${CURRENTPATH}/lib/libcrypto-tvOS-Sim.a"
+  echo "${CURRENTPATH}/lib/tvOS/libssl-tvOS-Sim.a"
+  echo "${CURRENTPATH}/lib/tvOS/libcrypto-tvOS-Sim.a"
 fi
 
 # Build watchOS/Simulator library if selected for build
 if [ ${#LIBSSL_WATCHOS[@]} -gt 0 ]; then
   echo "Build library for watchOS..."
-  lipo -create ${LIBSSL_WATCHOS[@]} -output "${CURRENTPATH}/lib/libssl-watchOS.a"
-  lipo -create ${LIBCRYPTO_WATCHOS[@]} -output "${CURRENTPATH}/lib/libcrypto-watchOS.a"
+  mkdir -p "${CURRENTPATH}/lib/watchOS"
+  lipo -create ${LIBSSL_WATCHOS[@]} -output "${CURRENTPATH}/lib/watchOS/libssl-watchOS.a"
+  lipo -create ${LIBCRYPTO_WATCHOS[@]} -output "${CURRENTPATH}/lib/watchOS/libcrypto-watchOS.a"
   echo "\n=====>watchOS SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-watchOS.a"
-  echo "${CURRENTPATH}/lib/libcrypto-watchOS.a"
+  echo "${CURRENTPATH}/lib/watchOS/libssl-watchOS.a"
+  echo "${CURRENTPATH}/lib/watchOS/libcrypto-watchOS.a"
 fi
 if [ ${#LIBSSL_WATCHOSSIM[@]} -gt 0 ]; then
   echo "Build library for watchOS Simulator..."
-  lipo -create ${LIBSSL_WATCHOSSIM[@]} -output "${CURRENTPATH}/lib/libssl-watchOS-Sim.a"
-  lipo -create ${LIBCRYPTO_WATCHOSSIM[@]} -output "${CURRENTPATH}/lib/libcrypto-watchOS-Sim.a"
+  mkdir -p "${CURRENTPATH}/lib/watchOS"
+  lipo -create ${LIBSSL_WATCHOSSIM[@]} -output "${CURRENTPATH}/lib/watchOS/libssl-watchOS-Sim.a"
+  lipo -create ${LIBCRYPTO_WATCHOSSIM[@]} -output "${CURRENTPATH}/lib/watchOS/libcrypto-watchOS-Sim.a"
   echo "\n=====>watchOS Simulator SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-watchOS-Sim.a"
-  echo "${CURRENTPATH}/lib/libcrypto-watchOS-Sim.a"
+  echo "${CURRENTPATH}/lib/lwatchOS/ibssl-watchOS-Sim.a"
+  echo "${CURRENTPATH}/lib/watchOS/libcrypto-watchOS-Sim.a"
 fi
 
 # Build Catalyst library if selected for build
 if [ ${#LIBSSL_CATALYST[@]} -gt 0 ]; then
   echo "Build library for Catalyst..."
-  lipo -create ${LIBSSL_CATALYST[@]} -output "${CURRENTPATH}/lib/libssl-Catalyst.a"
-  lipo -create ${LIBCRYPTO_CATALYST[@]} -output "${CURRENTPATH}/lib/libcrypto-Catalyst.a"
+  mkdir -p "${CURRENTPATH}/lib/catalyst"
+  lipo -create ${LIBSSL_CATALYST[@]} -output "${CURRENTPATH}/lib/catalyst/libssl-Catalyst.a"
+  lipo -create ${LIBCRYPTO_CATALYST[@]} -output "${CURRENTPATH}/lib/catalyst/libcrypto-Catalyst.a"
   echo "\n=====>Catalyst SSL and Crypto lib files:"
-  echo "${CURRENTPATH}/lib/libssl-Catalyst.a"
-  echo "${CURRENTPATH}/lib/libcrypto-Catalyst.a"
+  echo "${CURRENTPATH}/lib/catalyst/libssl-Catalyst.a"
+  echo "${CURRENTPATH}/lib/catalyst/libcrypto-Catalyst.a"
 fi
 
 # Copy include directory
@@ -570,7 +594,8 @@ if [ ${#OPENSSLCONF_ALL[@]} -gt 1 ]; then
   # Prepare intermediate header file
   # This overwrites opensslconf.h that was copied from $INCLUDE_DIR
   OPENSSLCONF_INTERMEDIATE="${CURRENTPATH}/include/openssl/opensslconf.h"
-  cp "${CURRENTPATH}/include/opensslconf-template.h" "${OPENSSLCONF_INTERMEDIATE}"
+  # cp "${CURRENTPATH}/include/opensslconf-template.h" "${OPENSSLCONF_INTERMEDIATE}"
+  cp "${SCRIPTDIR}/include/opensslconf-template.h" "${OPENSSLCONF_INTERMEDIATE}"
 
   # Loop all header files
   LOOPCOUNT=0
