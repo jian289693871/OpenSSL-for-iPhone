@@ -582,6 +582,7 @@ if [ ${#LIBSSL_CATALYST[@]} -gt 0 ]; then
 fi
 
 # Copy include directory
+mkdir -p "${CURRENTPATH}/include/"
 cp -R "${INCLUDE_DIR}" "${CURRENTPATH}/include/"
 
 echo "\n=====>Include directory:"
